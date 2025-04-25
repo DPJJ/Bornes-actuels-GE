@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <title>Sites du Grand Est avec Bornes Électriques</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="button-control">
+    <button class="sidebar-toggle" id="sidebar-toggle">Panneau de contrôle</button>
+  </div>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h3 class="sidebar-title">Panneau de contrôle</h3>
+      <button class="sidebar-close" id="sidebar-close">×</button>
+    </div>
+    <div class="accordion-title">Statistiques</div>
+    <div class="accordion-content">
+      <div class="stat-card">
+        <div class="stat-value" id="total-bornes">0</div>
+        <div class="stat-label">Total des bornes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="total-sites">0</div>
+        <div class="stat-label">Sites</div>
+      </div>
+    </div>
+    <div class="accordion-title">Bornes par département</div>
+    <div class="accordion-content" id="dept-stats">
+      <!-- Contenu généré par JavaScript -->
+    </div>
+  </div>
+  <div class="distance-info" id="distance-info">
+    <div id="distance-value">Cliquez sur deux bornes pour mesurer</div>
+    <div id="selected-sites"></div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
