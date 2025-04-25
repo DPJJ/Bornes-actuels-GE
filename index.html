@@ -4,9 +4,183 @@
   <title>Sites du Grand Est avec Bornes Électriques</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
   <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-  <script src="app.js"></script>
- <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+           position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .popup-title {
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .popup-content {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .button-control {
+            position: fixed;
+            left: 10px;
+            top: 10px;
+            z-index: 900;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: -350px;
+            top: 0;
+            width: 350px;
+            height: 100%;
+            background-color: white;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+            overflow-y: auto;
+            z-index: 1000;
+            transition: left 0.3s;
+            padding: 10px;
+        }
+
+        .sidebar.visible {
+            left: 0;
+        }
+
+        .sidebar-header {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .sidebar-close {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .accordion-title {
+            background-color: #f0f0f0;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            user-select: none;
+        }
+
+        .accordion-content {
+            display: none;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 0 0 5px 5px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3388ff;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #3388ff;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .distance-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            display: none;
+        }
+
+        .legend {
+            padding: 10px;
+            background: white;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+            border-radius: 5px;
+        }
+
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+
+        .legend-item {
+            margin-bottom: 5px;
+        }
+
+/* Style pour le bouton de mesure */
+.control-panel {
+    margin: 10px;
+}
+
+.control-button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 10px 15px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.control-button:hover {
+    background-color: #45a049;
+}
+
+/* Style lorsque la mesure est active */
+.control-button.active {
+    background-color: #f44336;
+}
+
+.control-button.active:hover {
+    background-color: #d32f2f;
+}
+  </style>
 </head>
 <body>
   <div id="map"></div>
@@ -15,8 +189,7 @@
   </div>
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <h3 class="sidebar-title">Panneau de contrôle</h3>
-      <button class="sidebar-close" id="sidebar-close">×</button>
+      <h3 class="sidebar-title">Panneau de contrôle</h3><button class="sidebar-close" id="sidebar-close">×</button>
     </div>
     <div class="accordion-title">Statistiques</div>
     <div class="accordion-content">
@@ -29,15 +202,569 @@
         <div class="stat-label">Sites</div>
       </div>
     </div>
-    <div class="accordion-title">Bornes par département</div>
-    <div class="accordion-content" id="dept-stats">
-      <!-- Contenu généré par JavaScript -->
-    </div>
   </div>
   <div class="distance-info" id="distance-info">
     <div id="distance-value">Cliquez sur deux bornes pour mesurer</div>
     <div id="selected-sites"></div>
   </div>
-  <script src="app.js"></script>
+  <script>
+        // Initialisation de la carte
+        var map = L.map('map').setView([48.8566, 4.3522], 7);
+
+        // Layer de la carte
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Définition des icônes
+        var siteIcon = L.icon({
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            shadowSize: [41, 41]
+        });
+
+        // Définition des départements du Grand Est
+        var departments = {
+            "08": "Ardennes",
+            "10": "Aube",
+            "51": "Marne",
+            "52": "Haute-Marne",
+            "54": "Meurthe-et-Moselle",
+            "55": "Meuse",
+            "57": "Moselle",
+            "67": "Bas-Rhin",
+            "68": "Haut-Rhin",
+            "88": "Vosges"
+        };
+
+        // Données des sites
+           var sites = [{
+                name: "STEMO EPINAL",
+                lat: 48.1828,
+                lon: 6.4447,
+                description: "Service Territorial Éducatif de Milieu Ouvert à Épinal",
+                address: "3 allées des Noisetiers",
+                bornes: "2 bornes simples EVBox (PDL: 5006 940 147 1011)",
+                dept: "88"
+            },
+            {
+                name: "DT LS /UEHD NANCY",
+                lat: 48.6937,
+                lon: 6.1844,
+                description: "Unité Éducative d'Hébergement Diversifié à Nancy",
+                address: "Site INSEE, 15 rue du Général Hulot",
+                bornes: "2 bornes doubles EVBox (TGBT INSEE)",
+                dept: "54"
+            },
+                        {
+                name: "UEMO THIONVILLE",
+                lat: 49.3667,
+                lon: 6.1667,
+                description: "Unité Éducative de Milieu Ouvert à Thionville",
+                address: "50 Avenue Albert 1er",
+                bornes: "1 borne double EVBox (PDL: 50002686508152, puissance augmentée à 48 kVa)",
+                dept: "57"
+            },
+            {
+                name: "UEHC METZ",
+                lat: 49.1193,
+                lon: 6.1757,
+                description: "Unité Éducative d'Hébergement Collectif à Metz",
+                address: "27 Rue Sente à My",
+                bornes: "1 borne double HAGER + 1 borne double SCAME (nouveau projet 2024)",
+                dept: "57"
+            },
+            {
+                name: "UEAJ NANCY",
+                lat: 48.6765,
+                lon: 6.1518,
+                description: "Unité Éducative d'Activité de Jour à Nancy",
+                address: "Parking - 251 Rue Jeanne d'Arc",
+                bornes: "1 borne double EVBox (PDL: 5005 478 477 7182)",
+                dept: "54"
+            },
+            {
+                name: "UEHC STRASBOURG",
+                lat: 48.5734,
+                lon: 7.7521,
+                description: "Unité Éducative d'Hébergement Collectif à Strasbourg",
+                address: "10 rue de l'Auberge de Jeunesse",
+                bornes: "1 borne double HM",
+                dept: "67"
+            },
+            {
+                name: "UEHDR MULHOUSE",
+                lat: 47.7508,
+                lon: 7.3359,
+                description: "Unité Éducative d'Hébergement Diversifié à Mulhouse",
+                address: "45 rue Aristide Briand",
+                bornes: "1 borne double EVBox",
+                dept: "68"
+            },
+            {
+                name: "UEHC COLMAR",
+                lat: 48.0811,
+                lon: 7.3557,
+                description: "Unité Éducative d'Hébergement Collectif à Colmar",
+                address: "16 avenue Gambetta",
+                bornes: "1 borne double EVBox (PDL: 68066/E1/0129337-47)",
+                dept: "68"
+            },
+            {
+                name: "UEMO HAGUENAU",
+                lat: 48.8122,
+                lon: 7.7901,
+                description: "Unité Éducative de Milieu Ouvert à Haguenau",
+                address: "13 rue Capito",
+                bornes: "1 borne double HM (PDL: 67180/E1/0811839-91)",
+                dept: "67"
+            },
+            {
+                name: "UEMO 3 MULHOUSE",
+                lat: 47.7481,
+                lon: 7.3396,
+                description: "Unité Éducative de Milieu Ouvert à Mulhouse",
+                address: "130 rue de la Mer Rouge",
+                bornes: "1 borne double EVBox (PDL: 5006 824 432 9844)",
+                dept: "68"
+            },
+            {
+                name: "UEAJ COLMAR",
+                lat: 48.0796,
+                lon: 7.3565,
+                description: "Unité Éducative d'Activité de Jour à Colmar",
+                address: "140 rue Logelbach",
+                bornes: "1 borne double HM (PDL: 68066/E1/0131121)",
+                dept: "68"
+            },
+            {
+                name: "UEAJ STRASBOURG",
+                lat: 48.5831,
+                lon: 7.7457,
+                description: "Unité Éducative d'Activité de Jour à Strasbourg",
+                address: "7 rue Livio",
+                bornes: "1 borne double EVBox (PDL: 67482/E1/0813769-18)",
+                dept: "67"
+            },
+            {
+                name: "UEMO SAVERNE",
+                lat: 48.7416,
+                lon: 7.3656,
+                description: "Unité Éducative de Milieu Ouvert à Saverne",
+                address: "2 rue Saint Nicolas",
+                bornes: "1 borne simple EVBox (CONSUEL en cours)",
+                dept: "67"
+            },
+            {
+                name: "DT METZ",
+                lat: 49.1192,
+                lon: 6.1732,
+                description: "Direction Territoriale à Metz",
+                address: "4 Rue des Remparts (Site Sous-préfecture Arsenal)",
+                bornes: "2 bornes simples HM + 2 bornes doubles EVBox (nouveau projet 2024)",
+                dept: "57"
+            },
+           {
+                name: "UEMO SARREGUEMINES",
+                lat: 49.1094,
+                lon: 7.0673,
+                description: "Unité Éducative de Milieu Ouvert à Sarreguemines",
+                address: "Nouveau site LE FESTIN",
+                bornes: "2 bornes doubles EVBox (nouveau projet 2024)",
+                dept: "57"
+           },
+            {
+                name: "UEMO CHARLEVILLE-MÉZIÈRES",
+                lat: 49.7626,
+                lon: 4.7222,
+                description: "Unité Éducative de Milieu Ouvert à Charleville-Mézières",
+                address: "Nouveau site SEVIGNE",
+                bornes: "4 bornes simples EVBox (1x22 kVa, 3x7.4 kVa) (nouveau projet 2024)",
+                dept: "08"
+            },
+           
+            {
+                name: "DT-PJJ TROYES - Parking aérien",
+                lat: 48.2733,
+                lon: 4.0668,
+                description: "Direction Territoriale PJJ à Troyes",
+                address: "Parking aérien Le Tertial",
+                bornes: "1 borne double HM (PDL: 0455 094 062 8360)",
+                dept: "10"
+            },
+            {
+                name: "DT-PJJ TROYES - Parking sous-sol",
+                lat: 48.2735,
+                lon: 4.0670,
+                description: "Direction Territoriale PJJ à Troyes",
+                address: "Parking sous-sol Le Tertial",
+                bornes: "1 borne simple HM (PDL: 0455 094 062 8360)",
+                dept: "10"
+            },
+            {
+                name: "UEMO REIMS NORD",
+                lat: 49.2627,
+                lon: 4.0213,
+                description: "Unité Éducative de Milieu Ouvert à Reims Nord",
+                address: "215/217 boulevard Charles Arnould",
+                bornes: "2 bornes doubles HM",
+                dept: "51"
+            },
+            {
+                name: "UEAJ EPERNAY",
+                lat: 49.0414,
+                lon: 3.9584,
+                description: "Unité Éducative d'Activité de Jour à Epernay",
+                address: "29 Quai de la Marne",
+                bornes: "1 borne double HM (PDL: 5005 724 871 3499)",
+                dept: "51"
+            },
+            {
+                name: "UEHC CHARLEVILLE-MÉZIÈRES",
+                lat: 49.7628,
+                lon: 4.7224,
+                description: "Unité Éducative d'Hébergement Collectif à Charleville-Mézières",
+                address: "20 rue Forest",
+                bornes: "1 borne double HM",
+                dept: "08"
+            },
+            {
+                name: "UEMO CHALONS-EN-CHAMPAGNE",
+                lat: 48.9563,
+                lon: 4.3657,
+                description: "Unité Éducative de Milieu Ouvert à Châlons-en-Champagne",
+                address: "27 rue Pasteur",
+                bornes: "1 borne double EVBox (PDL: 5006 853 260 7616)",
+                dept: "51"
+            },
+            {
+                name: "UEHD CHAUMONT",
+                lat: 48.1105,
+                lon: 5.1415,
+                description: "Unité Éducative d'Hébergement Diversifié à Chaumont",
+                address: "49 rue Levy Alphandery",
+                bornes: "1 borne double EVBox (PDL: 50013250197853)",
+                dept: "52"
+            },
+            {
+                name: "UEHD TROYES",
+                lat: 48.2940,
+                lon: 4.0510,
+                description: "Unité Éducative d'Hébergement Diversifié à Troyes",
+                address: "La Chapelle ST LUC",
+                bornes: "1 borne double HM",
+                dept: "10"
+            },
+            {
+                name: "DT REIMS",
+                lat: 49.2550,
+                lon: 4.0340,
+                description: "Direction Territoriale à Reims",
+                address: "39 rue Hincmar",
+                bornes: "2 bornes simples EVBox (à commander)",
+                dept: "51"
+            },
+            {
+                name: "DIRPJJ-GE",
+                lat: 48.6710,
+                lon: 6.1830,
+                description: "Direction Interrégionale PJJ Grand Est",
+                address: "109 Bd d'Haussonville / Parking sous-sol",
+                bornes: "1 borne double HM (PDL: 5006 622 432 5213)",
+                dept: "54"
+            },
+            {
+                name: "UEMO BRIEY",
+                lat: 49.2502,
+                lon: 5.9344,
+                description: "Unité Éducative de Milieu Ouvert à Briey",
+                address: "Maison Services Publics",
+                bornes: "1 borne double EVBox (PDL: 5005 001 395 8449)",
+                dept: "54"
+            },
+            {
+                name: "UEHC LAXOU",
+                lat: 48.6832,
+                lon: 6.1518,
+                description: "Unité Éducative d'Hébergement Collectif à Laxou",
+                address: "8 allées de Medreville",
+                bornes: "1 borne double EVBox (PDL: 5006 868 255 6594)",
+                dept: "54"
+            },
+            {
+                name: "UEHC BAR LE DUC",
+                lat: 48.7716,
+                lon: 5.1672,
+                description: "Unité Éducative d'Hébergement Collectif à Bar-le-Duc",
+                address: "94ème RI",
+                bornes: "1 borne simple",
+                dept: "55"
+            },
+            {
+                name: "STEMO VERDUN",
+                lat: 49.1598,
+                lon: 5.3891,
+                description: "Service Territorial Éducatif de Milieu Ouvert à Verdun",
+                address: "Saint Pierre",
+                bornes: "1 borne double EVBox (PDL: 5007 374 097 3091)",
+                dept: "55"
+            },
+            {
+                name: "STEMO METZ",
+                lat: 49.1114,
+                lon: 6.1795,
+                description: "Service Territorial Éducatif de Milieu Ouvert à Metz",
+                address: "4 Avenue Sebastopol",
+                bornes: "2 bornes doubles EVBox (PDL: 726 324 016 0007)",
+                dept: "57"
+            },
+            {
+                name: "UEMO 2 TROYES",
+                lat: 48.2900,
+                lon: 4.0800,
+                description: "Unité Éducative de Milieu Ouvert à Troyes",
+                address: "4 rue des Bas Trévois",
+                bornes: "1 borne simple EVBox (à l'étude par le SYNDIC)",
+                dept: "10"
+            }
+
+        ];
+
+
+// Variables pour la mesure de distance
+var selectedSites = [];
+var distanceLine;
+var measureActive = true; // Par défaut, la mesure est activée
+
+// Fonction pour initialiser l'application
+function initApp() {
+    // Ajouter le bouton de mesure s'il n'existe pas déjà
+    if (!document.getElementById('toggle-measure')) {
+        // Créer un contrôle Leaflet personnalisé pour le bouton
+        var measureControl = L.control({ position: 'topright' });
+        measureControl.onAdd = function() {
+            var div = L.DomUtil.create('div', 'leaflet-control measure-control');
+            div.innerHTML = '<button id="toggle-measure" class="control-button">Réinitialiser la mesure</button>';
+            return div;
+        };
+        measureControl.addTo(map);
+
+        // Ajouter l'écouteur d'événement après avoir ajouté le bouton à la carte
+        setTimeout(function() {
+            document.getElementById('toggle-measure').addEventListener('click', function() {
+                if (selectedSites.length > 0) {
+                    // Si au moins un site est sélectionné, on réinitialise
+                    resetMeasure();
+                    this.textContent = "Activer la mesure";
+                    measureActive = false;
+                } else {
+                    // Sinon on active/désactive le mode mesure
+                    measureActive = !measureActive;
+                    this.textContent = measureActive ? "Réinitialiser la mesure" : "Activer la mesure";
+                    
+                    // Afficher/masquer les infos de distance selon l'état
+                    document.getElementById('distance-info').style.display = measureActive ? 'block' : 'none';
+                    if (measureActive) {
+                        document.getElementById('distance-value').textContent = "Cliquez sur deux bornes pour mesurer";
+                    }
+                }
+            });
+        }, 100);
+    }
+
+    // Ajouter les marqueurs pour chaque site
+    sites.forEach(function(site) {
+        var marker = L.marker([site.lat, site.lon], { icon: siteIcon })
+            .bindPopup(`
+                <div class="popup-title">${site.name}</div>
+                <div class="popup-content">${site.description}</div>
+                <div class="popup-content"><strong>Adresse : </strong>${site.address}</div>
+                <div class="popup-content bornes-info"><strong>Bornes : </strong>${site.bornes}</div>
+                <div class="popup-content"><strong>Département : </strong>${departments[site.dept]} (${site.dept})</div>
+            `);
+        marker.addTo(map);
+
+        // Ajout d'événements de clic pour les marqueurs
+        marker.on('click', function() {
+            // Vérifier d'abord si la mesure est active
+            if (measureActive) {
+                if (selectedSites.length < 2) {
+                    selectedSites.push(site);
+                    marker.setIcon(L.icon({
+                        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+                        iconSize: [30, 45],
+                        iconAnchor: [15, 45],
+                        popupAnchor: [1, -34],
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+                        shadowSize: [41, 41]
+                    }));
+
+                    if (selectedSites.length === 2) {
+                        updateDistanceInfo();
+                        // Mettre à jour le texte du bouton pour indiquer la possibilité de réinitialiser
+                        document.getElementById('toggle-measure').textContent = "Réinitialiser la mesure";
+                    }
+                }
+            }
+        });
+    });
+
+    // Mettre à jour les statistiques
+    document.getElementById('total-bornes').textContent = sites.length;
+    document.getElementById('total-sites').textContent = sites.length;
+}
+
+// Fonction pour réinitialiser la mesure
+function resetMeasure() {
+    // Réinitialiser les icônes des sites sélectionnés
+    selectedSites.forEach(function(site) {
+        // Trouver le marqueur correspondant au site
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.Marker) {
+                var markerLatLng = layer.getLatLng();
+                if (markerLatLng.lat === site.lat && markerLatLng.lng === site.lon) {
+                    // Réinitialiser l'icône
+                    layer.setIcon(siteIcon);
+                }
+            }
+        });
+    });
+    
+    // Vider le tableau des sites sélectionnés
+    selectedSites = [];
+    
+    // Supprimer la ligne de distance
+    if (distanceLine) {
+        map.removeLayer(distanceLine);
+    }
+    
+    // Réinitialiser les affichages
+    document.getElementById('distance-value').textContent = "Cliquez sur deux bornes pour mesurer";
+    document.getElementById('selected-sites').innerHTML = "";
+    document.getElementById('distance-info').style.display = measureActive ? 'block' : 'none';
+}
+
+// Mettre à jour les informations de distance
+function updateDistanceInfo() {
+    var point1 = L.latLng(selectedSites[0].lat, selectedSites[0].lon);
+    var point2 = L.latLng(selectedSites[1].lat, selectedSites[1].lon);
+
+    // Dessiner une ligne entre les deux points
+    if (distanceLine) {
+        map.removeLayer(distanceLine);
+    }
+    distanceLine = L.polyline([point1, point2], {
+        color: 'red',
+        weight: 3,
+        opacity: 0.7,
+        dashArray: '5,10'
+    }).addTo(map);
+
+    // Calculer la distance
+    var distance = map.distance(point1, point2);
+    var distanceKm = (distance / 1000).toFixed(2);
+
+    // Afficher la distance
+    document.getElementById('distance-value').textContent = "Distance: " + distanceKm + " km";
+    document.getElementById('selected-sites').innerHTML =
+        `<div class="popup-content"><strong>De : </strong>${selectedSites[0].name}</div>
+         <div class="popup-content"><strong>À : </strong>${selectedSites[1].name}</div>`;
+    document.getElementById('distance-info').style.display = 'block';
+}
+
+// Styles CSS pour le bouton
+var style = document.createElement('style');
+style.innerHTML = `
+.measure-control {
+    margin: 10px;
+}
+
+.control-button {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.control-button:hover {
+    background-color: #45a049;
+}
+`;
+document.head.appendChild(style);
+
+// Appel de la fonction pour initialiser l'application
+initApp();
+
+        // Chargement des données GeoJSON de la région Grand Est
+        fetch('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions/grand-est/region-grand-est.geojson')
+            .then(response => response.json())
+            .then(data => {
+                // Création d'une couche GeoJSON avec les données précises
+                var grandEstBorder = L.geoJSON(data, {
+                    style: {
+                        color: '#FF4500', // Couleur orange-rouge
+                        weight: 3, // Épaisseur de la ligne
+                        opacity: 0.8, // Opacité
+                        fillColor: '#FF4500',
+                        fillOpacity: 0.05, // Opacité très faible pour le remplissage
+                        dashArray: '10, 10' // Style de ligne en pointillés
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.error('Erreur lors du chargement des données GeoJSON:', error));
+
+        // Légende
+        var legend = L.control({
+            position: 'bottomright'
+        });
+        legend.onAdd = function(map) {
+            var div = L.DomUtil.create('div', 'legend');
+            div.innerHTML += '<div class="control-title">Légende</div>';
+            div.innerHTML += '<div class="legend-item"><i style="background: url(https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png) no-repeat; background-size: contain;"></i> Sites avec bornes</div>';
+            div.innerHTML += '<div class="legend-item"><i style="background: url(https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png) no-repeat; background-size: contain;"></i> Bornes sélectionnées</div>';
+            div.innerHTML += '<div class="legend-item"><i style="background-color: #FF4500; height: 3px;"></i> Frontières Grand Est</div>';
+            return div;
+        };
+        legend.addTo(map);
+
+        // Gestion des événements pour le panneau latéral
+        document.getElementById('sidebar-toggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.add('visible');
+            document.getElementById('map').style.marginLeft = '350px';
+        });
+
+        document.getElementById('sidebar-close').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.remove('visible');
+            document.getElementById('map').style.marginLeft = '0';
+        });
+
+        // Gestion des accordéons dans le panneau latéral
+        document.querySelectorAll('.accordion-title').forEach(function(accordionTitle) {
+            accordionTitle.addEventListener('click', function() {
+                var content = this.nextElementSibling;
+                if (content.style.display === 'block') {
+                    content.style.display = 'none';
+                } else {
+                    document.querySelectorAll('.accordion-content').forEach(function(item) {
+                        item.style.display = 'none';
+                    });
+                    content.style.display = 'block';
+                }
+            });
+        });
+
+        // Ouvrir automatiquement la première section d'accordéon
+        document.querySelector('.accordion-content').style.display = 'block';
+  </script>
 </body>
 </html>
