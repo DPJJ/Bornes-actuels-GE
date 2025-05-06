@@ -533,6 +533,51 @@
 
         ];
 
+// Fonction pour calculer les points de charge
+function calculateChargePoints() {
+    let totalPoints = 0;
+    let doubleBornes = 0;
+    let simpleBornes = 0;
+    
+    sites.forEach(site => {
+        const bornesText = site.bornes.toLowerCase();
+        
+        // Compter les bornes doubles
+        const doubleMatches = bornesText.match(/(\d+) bornes? doubles?|borne double/g) || [];
+        doubleBornes += doubleMatches.reduce((sum, match) => {
+            const numMatch = match.match(/\d+/);
+            return sum + (numMatch ? parseInt(numMatch[0]) : 1);
+        }, 0);
+        
+        // Compter les bornes simples
+        const simpleMatches = bornesText.match(/(\d+) bornes? simples?|borne simple/g) || [];
+        simpleBornes += simpleMatches.reduce((sum, match) => {
+            const numMatch = match.match(/\d+/);
+            return sum + (numMatch ? parseInt(numMatch[0]) : 1);
+        }, 0);
+        
+        // Compter les mentions de "bornes" sans précision (on considère comme simples)
+        const genericMatches = bornesText.match(/(\d+) bornes?/g) || [];
+        const genericCount = genericMatches.reduce((sum, match) => {
+            const numMatch = match.match(/\d+/);
+            return sum + (numMatch ? parseInt(numMatch[0]) : 1);
+        }, 0);
+        
+        // Si on a des mentions génériques mais pas de doubles/simples, on les compte comme simples
+        if (genericCount > 0 && doubleMatches.length === 0 && simpleMatches.length === 0) {
+            simpleBornes += genericCount;
+        }
+    });
+    
+    // Calcul du total des points de charge (bornes doubles comptent pour 2)
+    totalPoints = (doubleBornes * 2) + simpleBornes;
+    
+    return {
+        totalPoints,
+        doubleBornes,
+        simpleBornes
+    };
+}
 
 // Variables pour la mesure de distance
 var selectedSites = [];
@@ -615,6 +660,12 @@ function initApp() {
     // Mettre à jour les statistiques
     document.getElementById('total-bornes').textContent = sites.length;
     document.getElementById('total-sites').textContent = sites.length;
+    
+    // Calculer et afficher les points de charge
+    const chargePoints = calculateChargePoints();
+    document.getElementById('total-points').textContent = chargePoints.totalPoints;
+    document.getElementById('bornes-double').textContent = chargePoints.doubleBornes;
+    document.getElementById('bornes-simple').textContent = chargePoints.simpleBornes;
 }
 
 // Fonction pour réinitialiser la mesure
@@ -767,4 +818,5 @@ initApp();
         document.querySelector('.accordion-content').style.display = 'block';
   </script>
 </body>
+
 </html>
